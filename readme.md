@@ -1,4 +1,4 @@
-#Organize your music by tag metadata
+# Bulk rename your music by tag metadata
 
 Reads audio files in a dir for tag metadata, then moves those files.
 
@@ -13,6 +13,8 @@ Known issues:
 * If files are corrupted, it just logs the file, ignores it, and continues
 * Collaboration albums aren't handled well: right now, it just organizes by default.
 * Mixed case isn't handled well. "The Band" and "the band" go into separate dirs.
+* (obviously) Some files don't have all of their metadata
 
 Planned:
 * Better handling for collaboration albums
+* Better handling for mixed case
