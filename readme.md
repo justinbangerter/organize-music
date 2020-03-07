@@ -3,7 +3,7 @@
 Reads audio files in a dir for tag metadata, then moves those files.
 
 Something like:
-/artist/album/trackno trackname.mp3
+~/music/artist/album/trackno trackname.mp3
 
 For more info, call with -h
 
