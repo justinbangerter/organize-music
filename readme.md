@@ -3,12 +3,13 @@
 Reads audio files in a dir for tag metadata, then moves those files.
 
 Something like:
-~/music/artist/album/trackno trackname.mp3
+
+    ~/music/artist/album/01 trackname.mp3
 
 ## Example:
 
-$ ln -s $HOME/projects/organize-music/__init__.py ~/bin/organize-music; chmod +x ~/bin/organize-music
-$ organize-music --out ~/music --src ~/download/
+    $ ln -s $HOME/projects/organize-music/__init__.py ~/bin/organize-music; chmod +x ~/bin/organize-music
+    $ organize-music --out ~/music --src ~/download/
 
 For more info, call with -h
 
