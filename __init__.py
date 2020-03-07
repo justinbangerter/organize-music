@@ -13,7 +13,7 @@ class FileFriendlyString(str):
     def __new__(self, x):
         return str.__new__(
             self,
-            re.sub('[^a-zA-Z\d\.\-\ &\!]', '_', x)
+            re.sub('[\/]', '_', x)
         )
 
 if __name__ == '__main__':
