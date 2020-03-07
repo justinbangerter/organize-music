@@ -5,6 +5,7 @@ import mimetypes
 import os
 import re
 import shutil
+import string
 import sys
 
 import mutagen
@@ -54,6 +55,11 @@ if __name__ == '__main__':
         '--ignore-artist',
         action='store_true',
         help='ignore the artist',
+    )
+    parser.add_argument(
+        '--capwords',
+        action='store_true',
+        help='(experimental) Capitalize the first letter of all words in artist, album, and track names',
     )
 
     args = parser.parse_args()
@@ -108,9 +114,13 @@ if __name__ == '__main__':
             if not args.ignore_artist:
                 if not f.get('artist'): continue
                 artist = FileFriendlyString(f.get('artist')[0])
+                if args.capwords:
+                    artist = string.capwords(artist)
                 path = os.path.join(path, artist)
             if f.get('album'):
                 album = FileFriendlyString(f.get('album')[0])
+                if args.capwords:
+                    album = string.capwords(album)
                 path = os.path.join(path, album)
             os.makedirs(path, exist_ok=True)
 
@@ -123,6 +133,8 @@ if __name__ == '__main__':
             except ValueError:
                 #couldn't parse the track number, probably
                 continue
+            if args.capwords:
+                songtitle = string.capwords(songtitle)
             songpath = os.path.join(path, songtitle)
 
             #already where it belongs
