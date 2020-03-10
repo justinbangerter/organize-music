@@ -151,8 +151,9 @@ if __name__ == '__main__':
                 shutil.move(src_file, songpath)
 
         #if the current dir is now empty, remove it
-        try:
-            os.rmdir(dirname)
-        except OSError:
-            continue
+        if not os.path.samefile(args.src, dirname):
+            try:
+                os.rmdir(dirname)
+            except OSError:
+                continue
 
