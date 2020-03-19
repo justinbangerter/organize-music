@@ -125,14 +125,21 @@ if __name__ == '__main__':
             os.makedirs(path, exist_ok=True)
 
             songtitle = title + ext
-            try:
-                if f.get('tracknumber'):
-                    songtitle = '{:02d} {}'.format(
-                        int(f.get('tracknumber')[0]), songtitle
-                    )
-            except ValueError:
-                #couldn't parse the track number, probably
-                continue
+            if f.get('tracknumber'):
+                tracknum = f.get('tracknumber')[0]
+
+                #song x of y
+                if '/' in tracknum:
+                    tracknum = tracknum.split('/')[0]
+
+                try:
+                    tracknum = int(tracknum)
+                except ValueError:
+                    print('Could not parse tracknumber: ' + f.get('tracknumber')[0])
+                    continue
+                songtitle = '{:02d} {}'.format(
+                    tracknum, songtitle
+                )
             if args.capwords:
                 songtitle = string.capwords(songtitle)
             songpath = os.path.join(path, songtitle)
@@ -142,12 +149,15 @@ if __name__ == '__main__':
 
             if os.path.exists(songpath):
                 if args.overwrite:
+                    print(src_file + ' to ' + songpath)
                     shutil.move(src_file, songpath)
                 elif args.discard:
+                    print('remove ' + src_file)
                     os.remove(src_file)
                 else:
                     print('File already exists: ' + songpath)
             else:
+                print(src_file + ' to ' + songpath)
                 shutil.move(src_file, songpath)
 
         #if the current dir is now empty, remove it
