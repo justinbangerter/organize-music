@@ -10,6 +10,12 @@ import sys
 
 import mutagen
 
+# If we encounter these files, delete them
+DELETE_FILES = ['desktop.ini']
+
+class TrackNumberParseFailed(Exception):
+    pass
+
 class FileFriendlyString(str):
     def __new__(self, x):
         return str.__new__(
@@ -17,8 +23,118 @@ class FileFriendlyString(str):
             re.sub('[\/]', '_', x)
         )
 
+class AudioFile(object):
+    #Proxy for mutagen files
+    def __init__(self, target):
+        self._target = target
+
+    def __dir__(self):
+        return set(sorted(object.__dir__(self) + dir(self._target)))
+
+    def __getattr__(self, attr):
+        return getattr(self._target, attr)
+
+    def extension(self):
+        exts = [
+            mimetypes.guess_extension(mimetype)
+            for mimetype in f.mime
+        ]
+        #filter None get first
+        return [
+            ext
+            for ext in exts
+            if ext
+        ][0]
+
+    def generated_filename(self):
+        if f.tracknumber():
+            return '{:02d} {}'.format(
+                f.tracknumber(), f.title() + f.extension()
+            )
+        return f.title() + f.extension()
+
+    def generated_path(self):
+        #Get a path based on this file's metadata
+
+        path = FileFriendlyString(self.artist())
+        if self.album():
+            path = os.path.join(path, FileFriendlyString(self.album()))
+
+        return os.path.join(path, self.generated_filename())
+
+    #metadata fields
+
+    def _metadata_first(self, field):
+        try:
+            return self.get(field)[0]
+        except TypeError:
+            return None
+        except IndexError:
+            return None
+
+    def artist(self):
+        return self._metadata_first('artist')
+
+    def album(self):
+        return self._metadata_first('album')
+
+    def title(self):
+        return self._metadata_first('title')
+
+    def tracknumber(self):
+        tracknum = self._metadata_first('tracknumber')
+
+        if not tracknum:
+            return None
+
+        #song x of y
+        if '/' in tracknum:
+            tracknum = tracknum.split('/')[0]
+
+        try:
+            return int(tracknum)
+        except ValueError:
+            raise TrackNumberParseFail('Could not parse tracknumber: ' + self.get('tracknumber'))
+
+def child_paths(directory):
+    #Walk the dir and dump a list of filepaths for all files in it
+    for dirname, subdirs, filenames in os.walk(directory):
+        for filename in filenames:
+            yield os.path.join(dirname, filename)
+
+def mutagen_files(paths):
+    #Transform a list of filepaths to mutagen file objects
+    for path in paths:
+        try:
+            yield mutagen.File(path, easy=True)
+        except mutagen.mp3.HeaderNotFoundError:
+            print('Possibly corrupted: ' + path)
+        except mutagen.id3._util.error:
+            print('Possibly corrupted: ' + path)
+
+def filtered_files(paths):
+    for path in paths:
+        #GTFO
+        if os.path.basename(path) in DELETE_FILES:
+            os.remove(path)
+        else:
+            yield path
+
+def audio_files(mutagen_file_list):
+    for mutagen_file in mutagen_file_list:
+        if len([
+            x for x in mutagen_file.mime
+            if x.startswith('audio/')
+        ]):
+            yield AudioFile(mutagen_file)
+        else:
+            print('Not an audio file: ' + mutagen_file.filename)
+
+
+
 if __name__ == '__main__':
     def directory(dirname):
+        #validation check and expansion for provided directory
         expanded = os.path.expanduser(dirname)
         if not os.path.isdir(expanded):
             raise argparse.ArgumentTypeError(
@@ -51,119 +167,35 @@ if __name__ == '__main__':
         action='store_true',
         help='discard duplicates',
     )
-    parser.add_argument(
-        '--ignore-artist',
-        action='store_true',
-        help='ignore the artist',
-    )
-    parser.add_argument(
-        '--capwords',
-        action='store_true',
-        help='(experimental) Capitalize the first letter of all words in artist, album, and track names',
-    )
 
     args = parser.parse_args()
 
-    for dirname, subdirs, filenames in os.walk(args.src):
-        for filename in filenames:
-            src_file = os.path.join(dirname, filename)
-            try:
-                f = mutagen.File(src_file, easy=True)
-            except mutagen.mp3.HeaderNotFoundError:
-                print('Possibly corrupted: ' + src_file)
-                continue
-            except mutagen.id3._util.error:
-                print('Possibly corrupted: ' + src_file)
-                continue
-
-            #not a file we care about
-            if not f:
-                #GTFO
-                if filename == 'desktop.ini':
-                    os.remove(src_file)
-                continue
-
-            is_audio = len([
-                x for x in f.mime
-                if x.startswith('audio/')
-            ])
-            if not is_audio:
-                print('Not an audio file: ' + src_file)
-                continue
-
-            exts = [
-                mimetypes.guess_extension(mt)
-                for mt in f.mime
-            ]
-            #filter None get first
-            ext = [
-                ext
-                for ext in exts
-                if ext
-            ][0]
-
-            #Possible Keys from EasyID3
-            #import mutagen
-            #sorted(mutagen.easyid3.EasyID3.valid_keys.keys())
-
-            #Don't bother sorting if we don't have what we want
-            if not f.get('title'): continue
-            title = FileFriendlyString(f.get('title')[0])
-
-            path = args.out
-            if not args.ignore_artist:
-                if not f.get('artist'): continue
-                artist = FileFriendlyString(f.get('artist')[0])
-                if args.capwords:
-                    artist = string.capwords(artist)
-                path = os.path.join(path, artist)
-            if f.get('album'):
-                album = FileFriendlyString(f.get('album')[0])
-                if args.capwords:
-                    album = string.capwords(album)
-                path = os.path.join(path, album)
-            os.makedirs(path, exist_ok=True)
-
-            songtitle = title + ext
-            if f.get('tracknumber'):
-                tracknum = f.get('tracknumber')[0]
-
-                #song x of y
-                if '/' in tracknum:
-                    tracknum = tracknum.split('/')[0]
-
-                try:
-                    tracknum = int(tracknum)
-                except ValueError:
-                    print('Could not parse tracknumber: ' + f.get('tracknumber')[0])
-                    continue
-                songtitle = '{:02d} {}'.format(
-                    tracknum, songtitle
+    for f in audio_files(
+        mutagen_files(
+            filtered_files(
+                child_paths(
+                    args.src
                 )
-            if args.capwords:
-                songtitle = string.capwords(songtitle)
-            songpath = os.path.join(path, songtitle)
+            )
+        )
+    ):
+        if not f.title(): continue
+        if not f.artist(): continue
+        songpath = os.path.join(args.out, f.generated_path())
+        os.makedirs(os.path.dirname(songpath), exist_ok=True)
 
-            #already where it belongs
-            if songpath == src_file: continue
+        #the file is already where it belongs
+        if songpath == f.filename: continue
 
-            if os.path.exists(songpath):
-                if args.overwrite:
-                    print(src_file + ' to ' + songpath)
-                    shutil.move(src_file, songpath)
-                elif args.discard:
-                    print('remove ' + src_file)
-                    os.remove(src_file)
-                else:
-                    print('File already exists: ' + songpath)
+        if os.path.exists(songpath):
+            if args.overwrite:
+                print(f.filename + ' to ' + songpath)
+                shutil.move(f.filename, songpath)
+            elif args.discard:
+                print('remove ' + f.filename)
+                os.remove(f.filename)
             else:
-                print(src_file + ' to ' + songpath)
-                shutil.move(src_file, songpath)
-
-        #if the current dir is now empty, remove it
-        if not os.path.samefile(args.src, dirname):
-            try:
-                os.rmdir(dirname)
-            except OSError:
-                continue
-
+                print('File already exists: ' + songpath)
+        else:
+            print(f.filename + ' to ' + songpath)
+            shutil.move(f.filename, songpath)
