@@ -6,6 +6,10 @@ Something like:
 
     ~/music/artist/album/01 trackname.mp3
 
+or
+
+    ~/music/Various Artists/album/01 trackname.mp3
+
 ## Example:
 
     $ ln -s $HOME/projects/organize-music/__init__.py ~/bin/organize-music; chmod +x ~/bin/organize-music
@@ -14,19 +18,17 @@ Something like:
 For more info, call with -h
 
 ## Features:
-* Avoids overwriting matches and logs by default
-* Recursively crawls source dir for music files
-* Deletes the source dir if empty
-* Filters path separators from metadata fields
+* Crawls source dir for music files
+* Can be set to clean up after itself
 * Should handle most audio file types, but this hasn't been tested
-* Can be set to ignore artists in case you want to process a collaboration album
+* Handles albums with multiple artists
 
 ## Known issues:
 * If files are corrupted, it just logs the file, ignores it, and continues
-* Collaboration albums aren't handled well: right now, it just organizes by default.
-* Mixed case isn't handled well. "The Band" and "the band" go into separate dirs.
-* (obviously) Some files don't have all of their metadata
+* Mixed case isn't handled at all. "The Band" and "the band" go into separate dirs.
+* (obviously) Some files don't have all of their metadata, so they can't be handled
+* Album art gets ignored, which is a problem if files get moved
+* Don't just run this on your music dir and expect it to fix everything. It's better to run it on new downloads.
 
 ## Planned:
-* Better handling for collaboration albums
-* Better handling for mixed case
+* Handle album art?
